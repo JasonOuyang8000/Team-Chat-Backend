@@ -9,30 +9,64 @@ import requests
 app = Flask(__name__)
 import helper
 CORS(app)
+from flask_socketio import SocketIO
+
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 import models
 models.db.init_app(app)
 
+socket_io = SocketIO(app,cors_allowed_origins="*")
+
 WEATHER_API = os.environ.get('WEATHER_API')
 
 @app.before_request
 def hook():
-    if request.headers.get('Authorization'):
-     
-        user_token = helper.tools.get_token(request.headers['Authorization'])
-      
-        decode = jwt.decode(user_token,os.environ.get('SECRET'),algorithms="HS256")
+  try:
+    if request.headers.get('Authorization') and request.headers.get('wstoken'):
+      user_token = helper.tools.get_token(request.headers['Authorization'])
 
-        user = models.User.query.filter_by(id = decode['id']).first()
-        if user == None:
-            return {
-                'message': 'User not found'
-            },400
+      decode = jwt.decode(user_token,os.environ.get('SECRET'),algorithms="HS256")
+      wdecode = jwt.decode(request.headers.get('wstoken'),os.environ.get('W_SECRET'),algorithms="HS256")
+      
+      user = models.User.query.filter_by(id = decode['id']).first()
+      workspace = models.Workspace.query.options(joinedload('channels')).filter_by(id = wdecode['id']).first()
+
+      if user == None:
+        return {
+            'message': 'User not found'
+        },400
+      elif workspace == None:
+        return {
+          'message': 'Workspace not found'
+        }
+      
+      if workspace.check_user(user):
         request.user = user
+        request.workspace = workspace
+      else:
+        return {
+          'message': 'Unauthorized'
+        },401
+    elif request.headers.get('Authorization'):
+      user_token = helper.tools.get_token(request.headers['Authorization'])
+    
+      decode = jwt.decode(user_token,os.environ.get('SECRET'),algorithms="HS256")
+
+      user = models.User.query.filter_by(id = decode['id']).first()
+      if user == None:
+          return {
+              'message': 'User not found'
+          },400
+      request.user = user
+      request.workspace = None
     else: 
         request.user = None
-  
+        request.workspace = None
+  except Exception as ex:
+    return {
+        'message': str(ex)
+    },400
 
 def root():
   return 'ok'
@@ -107,7 +141,7 @@ def workspaces():
 
 
     if request.method == 'GET':
-      workspaces = models.Workspace.query.options(joinedload('owner')).all()
+      workspaces = models.Workspace.query.options(joinedload('owner')).options(joinedload('users')).all()
     
       return {
         'workspaces': [workspace.to_json() for workspace in workspaces]
@@ -140,6 +174,13 @@ def workspaces():
       )
       user.limit -= 1
       user.owned_spaces.append(workspace)
+      
+      channel = models.Channel(
+        name="main",
+      )
+
+
+      workspace.channels.append(channel)
 
       models.db.session.commit()
 
@@ -156,7 +197,73 @@ def workspaces():
     return {
         'message': str(ex)
     },400
+
+@app.route('/workspace/<id>/join', methods=["POST"])
+def access_workspace(id):
+  try: 
+    user = request.user
+    if user == None:
+      return { 'message': 'user not found' }, 404
+    workspace = models.Workspace.query.options(joinedload('owner')).options(joinedload('users')).get(id)
+
+    if workspace.check_user(user):
+ 
+      workspace_token = jwt.encode({'id': workspace.id}, os.environ.get('W_SECRET'))
+
+      return { 
+        'worktoken': workspace_token
+      }
+    else:
+      if workspace.protected == False:
+        workspace.users.append(user)
+        models.db.session.commit()
+        workspace_token = jwt.encode({'id': workspace.id}, os.environ.get('W_SECRET'))
+
+        return { 
+          'worktoken': workspace_token
+        }
+
+      data = request.json
+      if data.get('password') == None:
+        return {
+          'message': 'Password is empty'
+        },401
+      if bcrypt.checkpw(str(data['password']).encode('utf8'), workspace.password.encode('utf8')):
+        workspace.users.append(user)
+        models.db.session.commit()
+        workspace_token = jwt.encode({'id': workspace.id}, os.environ.get('W_SECRET'))
+
+        return { 
+          'worktoken': workspace_token
+        }
+      else: 
+        return {
+          'message': 'Password is incorrect'
+        },401
+  except Exception as ex:
+    return {
+        'message': str(ex)
+    },400
+
+@app.route('/workspace/channels', methods=["GET"])
+def get_channels():
+  try: 
+      
+    user = request.user
+    workspace = request.workspace
+    if user == None or workspace == None:
+      return { 'message': 'unauthorized access' }, 401
+    return {
+      'workspace': workspace.to_json_channels()
+    }
+
+  except Exception as ex:
+    return {
+        'message': str(ex)
+    },400
   
+  
+
 
 if __name__ == '__main__':
   port = os.environ.get('PORT') or 5000
