@@ -13,6 +13,8 @@ from flask_socketio import SocketIO
 
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+
+app.config['SQLALCHEMY_ECHO'] = True
 import models
 models.db.init_app(app)
 
@@ -34,11 +36,11 @@ def hook():
 
       if user == None:
         return {
-            'message': 'User not found'
+            'message': 'User not found.'
         },400
       elif workspace == None:
         return {
-          'message': 'Workspace not found'
+          'message': 'Workspace not found.'
         }
       
       if workspace.check_user(user):
@@ -56,7 +58,7 @@ def hook():
       user = models.User.query.filter_by(id = decode['id']).first()
       if user == None:
           return {
-              'message': 'User not found'
+              'message': 'User not found.'
           },400
       request.user = user
       request.workspace = None
@@ -97,7 +99,7 @@ def login():
     return { "usertoken": user_token,
     "user": user.to_json() }
   else:
-    return { "message": "login failed" }, 401
+    return { "message": "Password is incorrect." }, 401
 
 @app.route('/user/verify', methods=["GET"])
 def verify():
@@ -106,7 +108,7 @@ def verify():
   if user:
     return { "user": user.to_json() }
   else:
-    return { "message": "user not found" }, 404
+    return { "message": "User not found.." }, 401
 
 @app.route('/user/signup', methods=["POST"])
 def signup():
@@ -137,7 +139,7 @@ def workspaces():
     user = request.user
   
     if user == None:
-       return { "message": "user not found" }, 404
+       return { "message": "User not found." }, 401
 
 
     if request.method == 'GET':
@@ -149,7 +151,7 @@ def workspaces():
     elif request.method == 'POST':
       if user.limit == 0:
         return {
-          'message': 'You ran out of workspaces'
+          'message': 'You ran out of workspaces/'
         }, 401
       data = request.json
 
@@ -174,11 +176,11 @@ def workspaces():
       )
       user.limit -= 1
       user.owned_spaces.append(workspace)
+      workspace.users.append(user)
       
       channel = models.Channel(
         name="main",
       )
-
 
       workspace.channels.append(channel)
 
@@ -203,8 +205,12 @@ def access_workspace(id):
   try: 
     user = request.user
     if user == None:
-      return { 'message': 'user not found' }, 404
+      return { 'message': 'User not found.' }, 401
     workspace = models.Workspace.query.options(joinedload('owner')).options(joinedload('users')).get(id)
+    if workspace == None:
+      return {
+        'message': 'Workspace not found.'
+      }, 401
 
     if workspace.check_user(user):
  
@@ -238,17 +244,16 @@ def access_workspace(id):
         }
       else: 
         return {
-          'message': 'Password is incorrect'
+          'message': 'Password is incorrect.'
         },401
   except Exception as ex:
     return {
         'message': str(ex)
     },400
 
-@app.route('/workspace/channels', methods=["GET"])
+@app.route('/workspace/channel', methods=["GET"])
 def get_channels():
   try: 
-      
     user = request.user
     workspace = request.workspace
     if user == None or workspace == None:
@@ -261,8 +266,73 @@ def get_channels():
     return {
         'message': str(ex)
     },400
+@app.route('/workspace/channel/message/<id>', methods=["GET","POST"])
+def get_channel_messages(id):
+  try:
+    user = request.user
+    workspace = request.workspace
+    if user == None or workspace == None:
+      return { 'message': 'unauthorized access' }, 401
+
+   
+
+    channel = models.Channel.query.options(joinedload(models.Channel.messages).joinedload(models.Channel_Message.user)).get(id)
+    
+    if channel == None:
+      return {
+        'message': 'Channel not found'
+      }
+
+
+    if request.method == 'GET':
   
-  
+      return channel.to_json_messages()
+
+    elif request.method == 'POST':  
+      data = request.json
+      if data.get('text') == None:
+        return {
+          'message': 'Message is not posted'
+        },401
+
+      message = models.Channel_Message(
+        text = data['text']
+      )
+
+      channel.messages.append(message)
+      user.messages.append(message)
+
+      models.db.session.commit()
+
+    
+      return {
+        'message': message.to_json()
+      }
+
+
+    else:
+      return {
+        error: 'Where are you going?'
+      },404
+  except Exception as ex:
+    return {
+        'message': str(ex)
+    },400
+@app.route('/workspace/verify', methods=["GET"])
+def verify_workspace():
+  try:
+    user = request.user
+    workspace = request.workspace 
+    if user:
+      return { "user": user.to_json(),"workspace": workspace.to_json() }
+    else:
+      return { "message": "unauthenticated" }, 401
+  except Exception as ex:
+    return {
+        'message': str(ex)
+    },400
+
+
 
 
 if __name__ == '__main__':

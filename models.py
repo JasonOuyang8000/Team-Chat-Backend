@@ -87,6 +87,14 @@ class Channel(db.Model):
         'created': self.created
       }
 
+    def to_json_messages(self):
+      return {
+        'id': self.id,
+        'name': self.name,
+        'created': self.created,
+        'messages': [message.to_json() for message in self.messages]
+      }
+
 class Channel_Message(db.Model):
     __tablename__ = 'channel_messages'
     id = db.Column(db.Integer, primary_key=True)
@@ -95,7 +103,19 @@ class Channel_Message(db.Model):
     channelId = db.Column(db.Integer,db.ForeignKey('channels.id'))
     created = db.Column(db.DateTime,server_default=db.func.now())
     updated = db.Column(db.DateTime,server_default=db.func.now(), server_onupdate=db.func.now())
-
+    def to_json(self):
+      print(self.user)
+      return {
+        'id':self.id,
+        'created': self.created,
+        'text': self.text,
+        'user': {
+          'id': self.user.id,
+          'created': self.user.created,
+          'username': self.user.username,
+        }
+      }
+  
 ## Reference Table
 class User_workspace(db.Model):
   __tablename__ = 'user_workspaces'
