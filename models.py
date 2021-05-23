@@ -104,14 +104,14 @@ class Channel_Message(db.Model):
     created = db.Column(db.DateTime,server_default=db.func.now())
     updated = db.Column(db.DateTime,server_default=db.func.now(), server_onupdate=db.func.now())
     def to_json(self):
-      print(self.user)
+     
       return {
         'id':self.id,
-        'created': self.created,
+        'created': self.created.isoformat(),
         'text': self.text,
         'user': {
           'id': self.user.id,
-          'created': self.user.created,
+          'created': self.user.created.isoformat(),
           'username': self.user.username,
         }
       }

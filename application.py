@@ -1,26 +1,126 @@
 import os
 from flask import Flask, request
+from flask.globals import g
 from flask_cors import CORS
 import sqlalchemy
 from sqlalchemy.orm import joinedload
 import bcrypt
 import jwt
 import requests
+
+
+
+
+
+from flask_socketio import SocketIO,join_room, leave_room, ConnectionRefusedError, emit, disconnect, Namespace, leave_room
 app = Flask(__name__)
 import helper
 CORS(app)
-from flask_socketio import SocketIO
+
 
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 
-app.config['SQLALCHEMY_ECHO'] = True
+app.config['SQLALCHEMY_ECHO'] = False
 import models
 models.db.init_app(app)
 
-socket_io = SocketIO(app,cors_allowed_origins="*")
+clients = []
 
-WEATHER_API = os.environ.get('WEATHER_API')
+socketio = SocketIO(app,cors_allowed_origins="*")
+
+
+#       message = models.Channel_Message(
+#         text = data['text']
+#       )
+
+#       channel.messages.append(message)
+#       user.messages.append(message)
+
+#       models.db.session.commit()
+
+
+@socketio.on('connect')
+def connect():
+
+  # wstoken = request.args.get('wstoken')
+
+  # print(user_token,wstoken)
+  # if user_token == None or wstoken == None:
+  #   raise ConnectionRefusedError('unauthorized!')
+
+ 
+  # wdecode = jwt.decode(wstoken,os.environ.get('W_SECRET'),algorithms="HS256")   
+
+
+  user_token = request.args.get('usertoken')
+  decode = jwt.decode(user_token,os.environ.get('SECRET'),algorithms="HS256")
+  user = models.User.query.filter_by(id = decode['id']).first()  
+
+  if not any(client['user'].id == user.id for client in clients):
+    user = {
+    "sid" : request.sid,
+    "user": user
+    }
+
+
+    clients.append(user)
+  print(clients)
+
+
+@socketio.on('join')
+def on_join(data):
+    # print(data)
+    # username = data['username']
+    room = data['channel']
+    # client = next(client for client in clients if request.sid == client['sid'])
+    # print(client)
+    # print(client['user'].username,'has joined')
+    join_room(str(room))
+    # send(username + ' has entered the room.', channel = channel)
+
+@socketio.on('disconnect')
+def test_disconnect():
+    global clients
+    print('Client disconnected')
+    print(clients)
+
+    clients = [client for client in clients if request.sid != client['sid']]
+    print(clients)
+
+@socketio.on("send message")
+def message(data):
+    id = data['channel']
+    user_token = data.get('usertoken')
+    decode = jwt.decode(user_token,os.environ.get('SECRET'),algorithms="HS256")
+
+
+    channel = models.Channel.query.options(joinedload(models.Channel.messages).joinedload(models.Channel_Message.user)).get(id)
+
+    user = models.User.query.filter_by(id = decode['id']).first()  
+    
+    message = models.Channel_Message(
+      text = data['message']
+    )
+
+
+    channel.messages.append(message)
+    user.messages.append(message)
+
+    models.db.session.commit()
+
+    print(message.to_json())
+
+    emit('channel message', {'message': message.to_json()}, room=str(id))
+    print(data['message'])
+
+
+@socketio.on('leave')
+def on_leave(data):
+    # username = data['username']
+    room = data['channel']
+    leave_room(str(room))
+    # send(username + ' has left the room.', to=room)
 
 @app.before_request
 def hook():
@@ -52,10 +152,14 @@ def hook():
         },401
     elif request.headers.get('Authorization'):
       user_token = helper.tools.get_token(request.headers['Authorization'])
+
+      
     
       decode = jwt.decode(user_token,os.environ.get('SECRET'),algorithms="HS256")
 
       user = models.User.query.filter_by(id = decode['id']).first()
+
+      print(user)
       if user == None:
           return {
               'message': 'User not found.'
@@ -131,6 +235,7 @@ def signup():
     return { "usertoken": user_token,
     "user": user.to_json() }
   except sqlalchemy.exc.IntegrityError:
+    print(user)
     return { "message": "username already taken" }, 400
 
 @app.route('/workspace', methods=["GET","POST"])
@@ -166,9 +271,6 @@ def workspaces():
           'message': 'Please add a Password.' 
         },401
    
-    
-
-
       workspace = models.Workspace(
         name = data['name'],
         protected = data['protected'],
@@ -178,12 +280,16 @@ def workspaces():
       user.limit -= 1
       user.owned_spaces.append(workspace)
       workspace.users.append(user)
-      print(workspace.id)
+     
       channel = models.Channel(
         name="Main",
       )
+      channelTwo = models.Channel(
+        name="Intro",
+      )
 
       workspace.channels.append(channel)
+      workspace.channels.append(channelTwo)
 
       models.db.session.commit()
 
@@ -198,11 +304,14 @@ def workspaces():
   except sqlalchemy.exc.IntegrityError:
     return {
       'message':'Workspace already exists...'
-    }
+    },400
   except Exception as ex:
+  
     return {
         'message': str(ex)
     },400
+
+
 
 @app.route('/workspace/<id>/join', methods=["POST"])
 def access_workspace(id):
@@ -256,16 +365,18 @@ def access_workspace(id):
         'message': str(ex)
     },400
 
-@app.route('/workspace/channel', methods=["GET"])
+@app.route('/workspace/channel', methods=["GET","POST"])
 def get_channels():
   try: 
     user = request.user
     workspace = request.workspace
     if user == None or workspace == None:
       return { 'message': 'unauthorized access' }, 401
-    return {
-      'workspace': workspace.to_json_channels()
-    }
+
+    if request.method == 'GET':
+      return {
+        'workspace': workspace.to_json_channels()
+      }
 
   except Exception as ex:
     return {
