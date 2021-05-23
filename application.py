@@ -32,7 +32,7 @@ def hook():
       wdecode = jwt.decode(request.headers.get('wstoken'),os.environ.get('W_SECRET'),algorithms="HS256")
       
       user = models.User.query.filter_by(id = decode['id']).first()
-      workspace = models.Workspace.query.options(joinedload('channels')).filter_by(id = wdecode['id']).first()
+      workspace = models.Workspace.query.options(joinedload('channels')).options(joinedload('owner')).options(joinedload('users')).filter_by(id = wdecode['id']).first()
 
       if user == None:
         return {
@@ -151,7 +151,7 @@ def workspaces():
     elif request.method == 'POST':
       if user.limit == 0:
         return {
-          'message': 'You ran out of workspaces/'
+          'message': 'You ran out of workspaces.'
         }, 401
       data = request.json
 
@@ -174,22 +174,26 @@ def workspaces():
         protected = data['protected'],
         password = bcrypt.hashpw(str(data['password']).encode('utf8'), bcrypt.gensalt()).decode('utf8') if data.get('protected') else None
       )
+     
       user.limit -= 1
       user.owned_spaces.append(workspace)
       workspace.users.append(user)
-      
+      print(workspace.id)
       channel = models.Channel(
-        name="main",
+        name="Main",
       )
 
       workspace.channels.append(channel)
 
       models.db.session.commit()
 
- 
+      
+
+      workspace_token = jwt.encode({'id': workspace.id}, os.environ.get('W_SECRET'))
 
       return {
-        'workspace': workspace.to_json()
+        'workspace': workspace.to_json(),
+        'worktoken' : workspace_token
       }
   except sqlalchemy.exc.IntegrityError:
     return {
@@ -206,7 +210,8 @@ def access_workspace(id):
     user = request.user
     if user == None:
       return { 'message': 'User not found.' }, 401
-    workspace = models.Workspace.query.options(joinedload('owner')).options(joinedload('users')).get(id)
+    workspace = models.Workspace.query.options(joinedload('channels')).options(joinedload('owner')).options(joinedload('users')).get(id)
+    # workspace = models.Workspace.query.options(joinedload('owner')).options(joinedload('users')).get(id)
     if workspace == None:
       return {
         'message': 'Workspace not found.'
@@ -324,7 +329,7 @@ def verify_workspace():
     user = request.user
     workspace = request.workspace 
     if user:
-      return { "user": user.to_json(),"workspace": workspace.to_json() }
+      return { "user": user.to_json(),"workspace": workspace.to_json_channels() }
     else:
       return { "message": "unauthenticated" }, 401
   except Exception as ex:
