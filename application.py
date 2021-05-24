@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 import bcrypt
 import jwt
 import requests
-
+from sqlalchemy import desc
 
 
 
@@ -298,7 +298,7 @@ def workspaces():
       workspace_token = jwt.encode({'id': workspace.id}, os.environ.get('W_SECRET'))
 
       return {
-        'workspace': workspace.to_json(),
+        'workspace': workspace.to_json_channels(),
         'worktoken' : workspace_token
       }
   except sqlalchemy.exc.IntegrityError:
@@ -319,6 +319,7 @@ def access_workspace(id):
     user = request.user
     if user == None:
       return { 'message': 'User not found.' }, 401
+
     workspace = models.Workspace.query.options(joinedload('channels')).options(joinedload('owner')).options(joinedload('users')).get(id)
     # workspace = models.Workspace.query.options(joinedload('owner')).options(joinedload('users')).get(id)
     if workspace == None:
@@ -331,7 +332,8 @@ def access_workspace(id):
       workspace_token = jwt.encode({'id': workspace.id}, os.environ.get('W_SECRET'))
 
       return { 
-        'worktoken': workspace_token
+        'worktoken': workspace_token,
+        'workspace': workspace.to_json_channels(),
       }
     else:
       if workspace.protected == False:
@@ -340,7 +342,8 @@ def access_workspace(id):
         workspace_token = jwt.encode({'id': workspace.id}, os.environ.get('W_SECRET'))
 
         return { 
-          'worktoken': workspace_token
+          'worktoken': workspace_token,
+          'workspace': workspace.to_json_channels(),
         }
 
       data = request.json
@@ -354,7 +357,8 @@ def access_workspace(id):
         workspace_token = jwt.encode({'id': workspace.id}, os.environ.get('W_SECRET'))
 
         return { 
-          'worktoken': workspace_token
+          'worktoken': workspace_token,
+          'workspace': workspace.to_json_channels(),
         }
       else: 
         return {
@@ -431,6 +435,7 @@ def get_channel_messages(id):
         error: 'Where are you going?'
       },404
   except Exception as ex:
+
     return {
         'message': str(ex)
     },400
