@@ -61,14 +61,13 @@ def connect():
   decode = jwt.decode(user_token,os.environ.get('SECRET'),algorithms="HS256")
   user = models.User.query.filter_by(id = decode['id']).first()  
 
-  if not any(client['user'].id == user.id for client in clients):
-    user = {
-    "sid" : request.sid,
-    "user": user
-    }
+
+  user = {
+  "sid" : request.sid,
+  }
 
 
-    clients.append(user)
+  clients.append(user)
   print(clients)
 
 
