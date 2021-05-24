@@ -9,7 +9,13 @@ from alembic import context
 from dotenv import load_dotenv
 import os
 load_dotenv()
-db_url = os.environ.get("DATABASE_URL")
+
+
+uri = os.getenv("DATABASE_URL")
+if uri.startswith("postgres://"):     
+    uri = uri.replace("postgres://", "postgresql://", 1)
+
+db_url = uri
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
