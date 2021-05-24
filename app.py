@@ -15,7 +15,7 @@ from sqlalchemy import desc
 from flask_socketio import SocketIO,join_room, leave_room, ConnectionRefusedError, emit, disconnect, Namespace, leave_room
 app = Flask(__name__)
 import helper
-CORS(app)
+
 
 uri = os.getenv("DATABASE_URL")
 
@@ -31,7 +31,7 @@ clients = []
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-
+CORS(app)
 
 #       message = models.Channel_Message(
 #         text = data['text']
