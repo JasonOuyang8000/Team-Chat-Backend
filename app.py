@@ -57,9 +57,9 @@ def connect():
   # wdecode = jwt.decode(wstoken,os.environ.get('W_SECRET'),algorithms="HS256")   
 
 
-  user_token = request.args.get('usertoken')
-  decode = jwt.decode(user_token,os.environ.get('SECRET'),algorithms="HS256")
-  user = models.User.query.filter_by(id = decode['id']).first()  
+  # user_token = request.args.get('usertoken')
+  # decode = jwt.decode(user_token,os.environ.get('SECRET'),algorithms="HS256")
+  # user = models.User.query.filter_by(id = decode['id']).first()  
 
 
   user = {
