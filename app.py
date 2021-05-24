@@ -29,8 +29,8 @@ models.db.init_app(app)
 
 clients = []
 
-socketio = SocketIO(app)
-socketio.init_app(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*")
+
 
 
 #       message = models.Channel_Message(
