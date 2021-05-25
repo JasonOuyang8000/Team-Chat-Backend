@@ -101,8 +101,8 @@ class Channel_Message(db.Model):
     text = db.Column(db.String, nullable=False)
     userId = db.Column(db.Integer,db.ForeignKey('users.id'))
     channelId = db.Column(db.Integer,db.ForeignKey('channels.id'))
-    created = db.Column(db.DateTime(),server_default=db.func.utcnow())
-    updated = db.Column(db.DateTime(),server_default=db.func.utcnow(), server_onupdate=db.func.utcnow())
+    created = db.Column(db.DateTime(),default=db.func.utcnow(),server_default=db.func.utcnow())
+    updated = db.Column(db.DateTime(),default=db.func.utcnow(),server_default=db.func.utcnow(), server_onupdate=db.func.utcnow())
     def to_json(self):
      
       return {
