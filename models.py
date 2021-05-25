@@ -1,7 +1,7 @@
 from sqlalchemy.sql.expression import true
 from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
-
+import datetime
 class User(db.Model):
   __tablename__ = 'users'
   id = db.Column(db.Integer, primary_key=True)
@@ -101,8 +101,8 @@ class Channel_Message(db.Model):
     text = db.Column(db.String, nullable=False)
     userId = db.Column(db.Integer,db.ForeignKey('users.id'))
     channelId = db.Column(db.Integer,db.ForeignKey('channels.id'))
-    created = db.Column(db.DateTime,server_default=db.func.now())
-    updated = db.Column(db.DateTime,server_default=db.func.now(), server_onupdate=db.func.now())
+    created = db.Column(db.DateTime(timezone=True),server_default=db.func.now())
+    updated = db.Column(db.DateTime(timezone=True),server_default=db.func.now(), server_onupdate=db.func.now(),)
     def to_json(self):
      
       return {
