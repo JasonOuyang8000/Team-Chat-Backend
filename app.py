@@ -112,7 +112,7 @@ def message(data):
     user.messages.append(message)
     models.db.session.commit()
     print(message.created)
-    print(datetime.now())
+    print(datetime.utcnow())
     print(message.to_json())
 
     emit('channel message', {'message': message.to_json()}, room=str(id))
