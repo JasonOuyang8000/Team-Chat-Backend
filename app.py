@@ -8,7 +8,7 @@ import bcrypt
 import jwt
 import requests
 from sqlalchemy import desc
-
+from datetime import datetime
 
 
 
@@ -110,9 +110,9 @@ def message(data):
 
     channel.messages.append(message)
     user.messages.append(message)
-    print(models.db.func.now())
     models.db.session.commit()
     print(message.created)
+    ]print(datetime.now())
     print(message.to_json())
 
     emit('channel message', {'message': message.to_json()}, room=str(id))
