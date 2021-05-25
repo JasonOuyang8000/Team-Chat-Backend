@@ -110,7 +110,7 @@ def message(data):
 
     channel.messages.append(message)
     user.messages.append(message)
-
+    print(models.db.func.now())
     models.db.session.commit()
     print(message.created)
     print(message.to_json())
