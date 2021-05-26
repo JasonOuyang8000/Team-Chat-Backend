@@ -72,6 +72,14 @@ class Channel_Alert(db.Model):
     channelId = db.Column(db.Integer,db.ForeignKey('channels.id'))
     created = db.Column(db.DateTime,server_default=db.func.now())
     updated = db.Column(db.DateTime,server_default=db.func.now(), server_onupdate=db.func.now())
+    def to_json(self): 
+      return {
+        'id': self.id,
+        'read': self.read,
+        'channelId': self.channelId,
+        'userId':self.userId,
+        'created':self.created
+      }
 
 
 class Channel(db.Model):
@@ -88,7 +96,7 @@ class Channel(db.Model):
         'id': self.id,
         'name':self.name,
         'created': self.created,
-        'alerts': self.alerts,
+        'alerts': [alert.to_json() for alert in self.alerts],
       }
 
     def to_json_messages(self):
@@ -97,7 +105,7 @@ class Channel(db.Model):
         'name': self.name,
         'created': self.created,
         'messages': [message.to_json() for message in self.messages],
-        'alerts': self.alerts
+        'alerts':  [alert.to_json() for alert in self.alerts],
       }
 
 class Channel_Message(db.Model):

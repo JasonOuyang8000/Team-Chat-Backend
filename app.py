@@ -314,7 +314,7 @@ def workspaces():
         name="Main",
       )
       channelTwo = models.Channel(
-        name="Intro",
+        name="Intro"
       )
 
       channelThree = models.Channel(
@@ -327,11 +327,50 @@ def workspaces():
         name="Updates",
       )
 
+
+
+
       workspace.channels.extend([channel,channelTwo,channelTwo,channelThree,channelFour,channelFive])
+
+
   
 
       models.db.session.commit()
 
+      alert = models.Channel_Alert(
+      
+        channelId = channel.id,
+        userId = user.id,
+        read = True
+      )
+      alertTwo = models.Channel_Alert(
+      
+        channelId = channelTwo.id,
+        userId= user.id,
+        read = True
+      )
+
+      alertThree = models.Channel_Alert(
+     
+        channelId = channelThree.id,
+        userId = user.id,
+        read = True
+      )
+      alertFour = models.Channel_Alert(
+      
+        channelId = channelFour.id,
+        userId = user.id,
+        read = True
+      )
+      alertFive = models.Channel_Alert(
+      
+        channelId = channelFive.id,
+        userId = user.id,
+        read = True
+      )
+      models.db.session.add_all([alert,alertTwo,alertThree,alertFour,alertFive])
+      
+      models.db.session.commit()
       
 
       workspace_token = jwt.encode({'id': workspace.id}, os.environ.get('W_SECRET'))
@@ -340,7 +379,8 @@ def workspaces():
         'workspace': workspace.to_json_channels(),
         'worktoken' : workspace_token
       }
-  except sqlalchemy.exc.IntegrityError:
+  except sqlalchemy.exc.IntegrityError as ex:
+    print(str(ex))
     return {
       'message':'Workspace already exists...'
     },400
@@ -377,7 +417,18 @@ def access_workspace(id):
     else:
       if workspace.protected == False:
         workspace.users.append(user)
+        alert_list = []
+        for channel in workspace.channels:
+          alert_list.append(models.Channel_Alert(
+            channelId = channel.id,
+            userId = user.id,
+            read = True
+          ))
+        models.db.session.add_all(alert_list)
         models.db.session.commit()
+
+
+
         workspace_token = jwt.encode({'id': workspace.id}, os.environ.get('W_SECRET'))
 
         return { 
@@ -392,6 +443,15 @@ def access_workspace(id):
         },401
       if bcrypt.checkpw(str(data['password']).encode('utf8'), workspace.password.encode('utf8')):
         workspace.users.append(user)
+
+        alert_list = []
+        for channel in workspace.channels:
+          alert_list.append(models.Channel_Alert(
+            channelId = channel.id,
+            userId = user.id,
+            read = True
+          ))
+        models.db.session.add_all(alert_list)
         models.db.session.commit()
         workspace_token = jwt.encode({'id': workspace.id}, os.environ.get('W_SECRET'))
 
