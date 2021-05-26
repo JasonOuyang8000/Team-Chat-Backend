@@ -1,5 +1,8 @@
 from sqlalchemy.sql.expression import true
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import joinedload
+from sqlalchemy import asc
+
 from datetime import datetime
 db = SQLAlchemy()
 import datetime
@@ -44,7 +47,8 @@ class Workspace(db.Model):
       'created':self.created,
       'protected': self.protected
     }
-  def to_json_channels(self):
+  def to_json_channels(self,user):
+    user_alerts = Channel_Alert.query.options(joinedload('channel')).filter(Channel_Alert.userId == user.id,Channel_Alert.channelId.in_([channel.id for channel in self.channels])).order_by(asc(Channel_Alert.id)).all()
     return {
       'id': self.id,
       'name': self.name,
@@ -52,8 +56,10 @@ class Workspace(db.Model):
       'users': [user.to_json() for user in self.users],
       'created':self.created,
       'protected': self.protected,
-      'channels': [channel.to_json() for channel in self.channels]
+      'user_alerts':[channel_alert.to_json() for channel_alert in user_alerts]
     }
+    
+
 
   def check_user(self,user):
     if self.owner.id == user.id:
@@ -78,7 +84,7 @@ class Channel_Alert(db.Model):
         'read': self.read,
         'channelId': self.channelId,
         'userId':self.userId,
-        'created':self.created
+        'channel':self.channel.to_json()
       }
 
 
@@ -95,8 +101,8 @@ class Channel(db.Model):
       return {
         'id': self.id,
         'name':self.name,
-        'created': self.created,
-        'alerts': [alert.to_json() for alert in self.alerts],
+        'created': self.created.isoformat(),
+      
       }
 
     def to_json_messages(self):
@@ -105,7 +111,7 @@ class Channel(db.Model):
         'name': self.name,
         'created': self.created,
         'messages': [message.to_json() for message in self.messages],
-        'alerts':  [alert.to_json() for alert in self.alerts],
+      
       }
 
 class Channel_Message(db.Model):

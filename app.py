@@ -117,8 +117,22 @@ def message(data):
    
 
     emit('channel message', {'message': message.to_json()}, room=str(id))
+    models.Channel_Alert.query.filter(models.Channel_Alert.channelId == id, models.Channel_Alert.userId != user.id).update({'read': False}, synchronize_session=False)
+    models.db.session.commit()
+    # alerts = models.Channel_Alert.query.options(joinedload('channel')).filter(models.Channel_Alert.channelId == id, models.Channel_Alert.userId != user.id).all()
+    # print(alerts)
+    emit('channel alert', {'channelId': id},broadcast=True, include_self=False)
+
     print(data['message'])
 
+@socketio.on('channel alert')
+def accept_alert(data):
+  id = data['channel']
+  user_token = data.get('usertoken')
+  decode = jwt.decode(user_token,os.environ.get('SECRET'),algorithms="HS256")
+  user = models.User.query.filter_by(id = decode['id']).first()  
+  models.Channel_Alert.query.filter(models.Channel_Alert.channelId == id, models.Channel_Alert.userId == user.id,models.Channel_Alert.read == False).update({'read': True}, synchronize_session=False)
+  models.db.session.commit()
 
 @socketio.on('leave')
 def on_leave(data):
@@ -376,7 +390,7 @@ def workspaces():
       workspace_token = jwt.encode({'id': workspace.id}, os.environ.get('W_SECRET'))
 
       return {
-        'workspace': workspace.to_json_channels(),
+        'workspace': workspace.to_json_channels(user),
         'worktoken' : workspace_token
       }
   except sqlalchemy.exc.IntegrityError as ex:
@@ -412,7 +426,7 @@ def access_workspace(id):
 
       return { 
         'worktoken': workspace_token,
-        'workspace': workspace.to_json_channels(),
+        'workspace': workspace.to_json_channels(user),
       }
     else:
       if workspace.protected == False:
@@ -433,7 +447,7 @@ def access_workspace(id):
 
         return { 
           'worktoken': workspace_token,
-          'workspace': workspace.to_json_channels(),
+          'workspace': workspace.to_json_channels(user),
         }
 
       data = request.json
@@ -457,7 +471,7 @@ def access_workspace(id):
 
         return { 
           'worktoken': workspace_token,
-          'workspace': workspace.to_json_channels(),
+          'workspace': workspace.to_json_channels(user),
         }
       else: 
         return {
@@ -478,7 +492,7 @@ def get_channels():
 
     if request.method == 'GET':
       return {
-        'workspace': workspace.to_json_channels()
+        'workspace': workspace.to_json_channels(user)
       }
 
   except Exception as ex:
@@ -544,7 +558,9 @@ def verify_workspace():
     user = request.user
     workspace = request.workspace 
     if user:
-      return { "user": user.to_json(),"workspace": workspace.to_json_channels() }
+      return { 
+      "user": user.to_json(),
+      "workspace": workspace.to_json_channels(user) }
     else:
       return { "message": "unauthenticated" }, 401
   except Exception as ex:
