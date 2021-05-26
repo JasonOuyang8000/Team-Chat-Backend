@@ -27,6 +27,7 @@ class Workspace(db.Model):
   __tablename__ = 'workspaces'
   id = db.Column(db.Integer, primary_key=True)
   name = db.Column(db.String, nullable=False, unique=True)
+  image = db.Column(db.Text, nullable=True)
   password = db.Column(db.String, nullable=True)
   protected = db.Column(db.Boolean, default=False)
   channels = db.relationship('Channel', backref='workspace')
@@ -38,6 +39,7 @@ class Workspace(db.Model):
       'id': self.id,
       'name': self.name,
       'owner': self.owner.to_json(),
+      'image': self.image,
       'users': [user.to_json() for user in self.users],
       'created':self.created,
       'protected': self.protected
@@ -85,7 +87,8 @@ class Channel(db.Model):
       return {
         'id': self.id,
         'name':self.name,
-        'created': self.created
+        'created': self.created,
+        'alerts': self.alerts,
       }
 
     def to_json_messages(self):
@@ -93,7 +96,8 @@ class Channel(db.Model):
         'id': self.id,
         'name': self.name,
         'created': self.created,
-        'messages': [message.to_json() for message in self.messages]
+        'messages': [message.to_json() for message in self.messages],
+        'alerts': self.alerts
       }
 
 class Channel_Message(db.Model):

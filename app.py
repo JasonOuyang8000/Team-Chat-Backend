@@ -20,8 +20,8 @@ import helper
 uri = os.getenv("DATABASE_URL")
 
 
-if uri.startswith("postgres://"):     
-  uri = uri.replace("postgres://", "postgresql://", 1)
+# if uri.startswith("postgres://"):     
+#   uri = uri.replace("postgres://", "postgresql://", 1)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_ECHO'] = False
@@ -243,6 +243,28 @@ def signup():
     print(user)
     return { "message": "username already taken" }, 400
 
+@app.route('/workspace/user',methods = ["GET", "POST"])
+def user_workspaces():
+  try: 
+    user = request.user
+    
+ 
+    if user == None:
+        return { "message": "User not found." }, 401
+    
+    workspaces = user.work_spaces
+
+    return {
+      'workspaces': [workspace.to_json() for workspace in workspaces]
+    },200
+    
+  except Exception as ex:
+    print(str(ex))
+    return {
+        'message': str(ex)
+    },400
+
+
 @app.route('/workspace', methods=["GET","POST"])
 def workspaces():
   try: 
@@ -265,7 +287,7 @@ def workspaces():
         }, 401
       data = request.json
 
-      if data.get('name') == None or data.get('protected') == None:
+      if data.get('name') == None or data.get('protected') == None or data.get('image') == None:
         return {
           'message': 'Please Fill out the fields.'
         },401
@@ -275,10 +297,12 @@ def workspaces():
         return {
           'message': 'Please add a Password.' 
         },401
-   
+      print(data['image'])
+
       workspace = models.Workspace(
         name = data['name'],
         protected = data['protected'],
+        image =  data['image'],
         password = bcrypt.hashpw(str(data['password']).encode('utf8'), bcrypt.gensalt()).decode('utf8') if data.get('protected') else None
       )
      
@@ -293,8 +317,18 @@ def workspaces():
         name="Intro",
       )
 
-      workspace.channels.append(channel)
-      workspace.channels.append(channelTwo)
+      channelThree = models.Channel(
+        name="Work",
+      )
+      channelFour = models.Channel(
+        name="Other",
+      )
+      channelFive = models.Channel(
+        name="Updates",
+      )
+
+      workspace.channels.extend([channel,channelTwo,channelTwo,channelThree,channelFour,channelFive])
+  
 
       models.db.session.commit()
 
@@ -437,7 +471,7 @@ def get_channel_messages(id):
 
     else:
       return {
-        error: 'Where are you going?'
+        'message': 'Where are you going?'
       },404
   except Exception as ex:
 
@@ -457,7 +491,23 @@ def verify_workspace():
     return {
         'message': str(ex)
     },400
+@app.route('/image', methods=["GET"])
+def search_images():
+  try: 
 
+    search = request.args.get('q') or 'cars'
+    result = requests.get(f"https://api.pexels.com/v1/search?query={search}&per_page=9",headers={'Authorization': '563492ad6f917000010000016bb00f4f283448c4b707cf2f9ba1d91a'})
+    return {
+      'result':result.json()
+  }
+
+  except Exception as ex:
+    return {
+        'message': str(ex)
+    },400
+
+
+  
 
 
 

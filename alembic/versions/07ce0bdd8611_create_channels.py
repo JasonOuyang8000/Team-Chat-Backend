@@ -19,7 +19,7 @@ def upgrade():
     op.create_table(
         'channels',
         sa.Column('id', sa.Integer, primary_key=True),
-        sa.Column('name', sa.String, nullable=False, ),
+        sa.Column('name', sa.String, nullable=False),
         sa.Column('workspaceId',sa.Integer),
         sa.Column('created',sa.DateTime,  server_default=sa.func.now()),
         sa.Column('updated',sa.DateTime, server_default=sa.func.now(), server_onupdate=sa.func.now())

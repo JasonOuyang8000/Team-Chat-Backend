@@ -23,6 +23,7 @@ def upgrade():
         sa.Column('name', sa.String, nullable=False, unique=True),
         sa.Column('password', sa.String, nullable=True),
         sa.Column('protected', sa.Boolean, default=False),
+        sa.Column('image',sa.Text,nullable=False),
         sa.Column('ownerId', sa.Integer),
         sa.Column('created',sa.DateTime,  server_default=sa.func.now()),
         sa.Column('updated',sa.DateTime, server_default=sa.func.now(), server_onupdate=sa.func.now())
