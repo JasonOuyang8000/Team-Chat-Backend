@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 import bcrypt
 import jwt
 import requests
-from sqlalchemy import desc
+from sqlalchemy import desc,asc
 
 
 
@@ -20,8 +20,8 @@ import helper
 uri = os.getenv("DATABASE_URL")
 
 
-if uri.startswith("postgres://"):     
-  uri = uri.replace("postgres://", "postgresql://", 1)
+# if uri.startswith("postgres://"):     
+#   uri = uri.replace("postgres://", "postgresql://", 1)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_ECHO'] = False
@@ -268,6 +268,7 @@ def user_workspaces():
     
     workspaces = user.work_spaces
 
+
     return {
       'workspaces': [workspace.to_json() for workspace in workspaces]
     },200
@@ -289,7 +290,7 @@ def workspaces():
 
 
     if request.method == 'GET':
-      workspaces = models.Workspace.query.options(joinedload('owner')).options(joinedload('users')).all()
+      workspaces = models.Workspace.query.options(joinedload('owner')).options(joinedload('users')).order_by(desc(models.Workspace.created)).all()
     
       return {
         'workspaces': [workspace.to_json() for workspace in workspaces]
@@ -572,7 +573,9 @@ def search_images():
   try: 
 
     search = request.args.get('q') or 'cars'
-    result = requests.get(f"https://api.pexels.com/v1/search?query={search}&per_page=9",headers={'Authorization': '563492ad6f917000010000016bb00f4f283448c4b707cf2f9ba1d91a'})
+    result = requests.get(f"https://api.pexels.com/v1/search?query={search}&per_page=90",headers={'Authorization': '563492ad6f917000010000016bb00f4f283448c4b707cf2f9ba1d91a'})
+    print(result.json())
+
     return {
       'result':result.json()
   }

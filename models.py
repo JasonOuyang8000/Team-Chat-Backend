@@ -53,6 +53,7 @@ class Workspace(db.Model):
       'id': self.id,
       'name': self.name,
       'owner': self.owner.to_json(),
+      'image': self.image,
       'users': [user.to_json() for user in self.users],
       'created':self.created,
       'protected': self.protected,
