@@ -141,6 +141,13 @@ def on_leave(data):
     leave_room(str(room))
     # send(username + ' has left the room.', to=room)
 
+@socketio.on('created workspace')
+def on_create_space():
+  
+    print('test')
+    emit('create workspace', {},broadcast=True, include_self=False)
+
+
 @app.before_request
 def hook():
   try:
