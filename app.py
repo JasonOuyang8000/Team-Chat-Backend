@@ -568,6 +568,25 @@ def verify_workspace():
     return {
         'message': str(ex)
     },400
+
+@app.route('/user/stats', methods=["GET"])
+def get_stats():
+  try:
+   user = request.user
+   if user == None:
+      return { 'message': 'User not found.' }, 401
+   return {
+     'messages': [message.to_json() for message in user.messages]
+   }
+
+
+  except Exception as ex:
+    return {
+        'message': str(ex)
+    },400
+
+
+
 @app.route('/image', methods=["GET"])
 def search_images():
   try: 
