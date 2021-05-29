@@ -7,4 +7,4 @@ Team Chat allows people to connect with each through workspace. Through each wor
 A workspace can be protected or not protected, giving more privacy those who want to connect with just their friends. 
 
 
-  ![ERD](/erd/erd.jpeg)
+  ![ERD](./erd/erd.jpeg)
